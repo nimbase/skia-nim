@@ -8,3 +8,4 @@ testresults/
 !/tests/*.nim
 !/tests/*.nims
 
+out.png
