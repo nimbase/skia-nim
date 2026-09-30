@@ -12,62 +12,30 @@
   <img src="https://github.com/nimbase/skia-nim/workflows/test/badge.svg" alt="Github Actions">  <img src="https://github.com/nimbase/skia-nim/workflows/docs/badge.svg" alt="Github Actions">
 </p>
 
-Curated bindings for the Skia 2D graphics library. The package is split into
-a thin, 1:1 core layer over a C ABI and an idiomatic Nim wrapper layer that
-manages resources for you.
+Curated bindings for the Skia 2D graphics library: a thin, 1:1 layer over a
+C ABI, and an idiomatic Nim layer on top that manages resources for you.
 
-Skia is a C++ library and its experimental C API was removed upstream in
-2023, so there is no C header to bind against. This package therefore ships
-its own C ABI (`src/bindings/capi/skia_capi.cpp`), which is compiled and
-linked automatically into any program that imports it.
-
-Skia itself is not vendored here: it links against a system-wide
-installation, found via `SKIA_DIR` or `-d:skiaHome=...`. See
-[SKIA-INSTALL.md](SKIA-INSTALL.md).
+Importing the package is the whole setup. The C ABI is compiled into your
+binary, and it links against a system-wide Skia, found via `SKIA_DIR` or
+`-d:skiaHome=...`. See [SKIA-INSTALL.md](SKIA-INSTALL.md).
 
 > [!NOTE]
-> This library is a work in progress. Coverage currently focuses on the CPU
-> raster backend: surfaces, canvases, paints, paths, images, PNG/JPEG
-> codecs, gradients, image and path effects, and simple text. Not bound
-> yet: the GPU backends (`GrDirectContext` / Graphite), `SkPicture`
-> recording, `skparagraph` shaping, and the SVG and PDF backends. The
-> vendored prebuilt library covers Linux x86-64 only. Contributions
-> welcome.
+> This library is a work in progress, and covers Skia's CPU raster backend:
+> surfaces, canvases, paints, paths, images, PNG and JPEG, gradients,
+> filters and simple text. Not bound yet: the GPU backends
+> (`GrDirectContext` and Graphite), `SkPicture` recording, `skparagraph`
+> shaping, and the SVG and PDF backends. Developed and tested on Linux
+> x86-64. Contributions welcome.
 
 ## Features
 
-- Two layers in one package: a thin C-style mapping of the C header
-  `src/bindings/capi/skia_capi.h` (as `skia/bindings/skia_raw`), plus a safe
-  high-level API on top
-- No build step for the consumer — the C++ shim is small enough to compile
-  in a second and links straight into your binary; you only need Skia
-  already installed, which you probably have via Chrome or Android tooling
-- Enum values that cannot silently drift: every `skc_*` constant is
-  `static_assert`ed against the Skia enum it mirrors, so an upstream
-  renumber breaks the build instead of writing an out-of-range value
-- Bindings the C compiler checks — Nim emits no declarations of its own and
-  `#include`s the real header, so a signature or field mismatch is a compile
-  error
-- RAII-style resource management in three flavours, each matching how Skia
-  itself treats the object. `Surface`, `Image`, `Shader`, `Typeface`,
-  `Font` and friends share one reference-counted handle; `Paint`, `Path` and
-  `Pixmap` deep-copy so copies are independent; `Canvas` holds a reference
-  to its `Surface` and so cannot outlive it
-- `ValueError` and `IOError` on failure, with Skia's own explanation
-  attached, rather than NULL sentinels
-- Idiomatic helpers on top of the C surface: `fillPaint` / `strokePaint`
-  presets, `newPath(proc (p: var Path) ...)` builders, `canvas.scoped` and
-  `canvas.transformed` for balanced save/restore, and `$` on every enum
-  for readable error messages
-- Graphics: shapes, paths with all curve types, fill rules, blend modes,
-  clipping, transforms, linear / radial / sweep / conical gradients, blur
-  filters, dash and corner path effects, and colour matrix filters
-- Images: PNG and JPEG encoding, lazy decode, pixel read-back normalised to
-  RGBA, and `snapshot` from any surface
-- Text through the platform font manager, with measurement, metrics, and
-  reusable text blobs
-- Tested for memory safety under AddressSanitizer: no leaks and no invalid
-  accesses attributable to the binding
+- Two layers: a thin C-style API over Skia, and a friendly Nim layer on top
+- Shapes, paths, clipping, transforms, blend modes and gradients
+- PNG and JPEG, both ways, plus pixel read-back
+- Text and font metrics, using your system's fonts
+- Blur, colour filters and path effects
+- Handles clean themselves up, and failures raise instead of returning nil
+- `scoped` and `transformed` blocks, so canvas state always balances
 
 ## Requirements
 
@@ -87,6 +55,39 @@ installation, found via `SKIA_DIR` or `-d:skiaHome=...`. See
 
 System libraries linked alongside Skia: `fontconfig` and `freetype` (for
 text), plus the usual `pthread` / `dl` / `m`.
+
+## How it works
+
+**Skia has no C API.** It is a C++ library, and the experimental C interface
+it once had was removed upstream in 2023. So this package writes its own:
+`src/bindings/capi/skia_capi.cpp` is an `extern "C"` shim over the C++ API.
+Nim cannot call C++ directly, so the shim is compiled straight into your
+binary via `{.compile(...)}`. It is small enough that this costs about a
+second.
+
+**Nothing is guessed at.** Every `skc_*` enum constant is `static_assert`ed
+against the Skia enum it mirrors, so an upstream renumber fails the build
+instead of writing an out-of-range value at runtime. And the binding points
+at a system Skia by searching a fixed list of paths, stopping with the list
+it tried rather than picking a plausible-looking wrong one — a
+header/library mismatch links cleanly and then corrupts memory.
+
+**The C compiler checks the bindings.** Nim emits no declarations of its
+own and `#include`s the real header instead, so a wrong signature or struct
+field is a compile error rather than a mystery at runtime.
+
+**Ownership comes in three flavours**, each matching how Skia itself treats
+the object:
+
+| Kind | Types | What copying does |
+|---|---|---|
+| shared | `Surface`, `Image`, `Shader`, `Typeface`, `Font`, … | shares one reference-counted handle |
+| value | `Paint`, `Path`, `Pixmap` | deep copy, so copies are independent |
+| view | `Canvas` | holds a reference to its `Surface`, so it cannot outlive it |
+
+**It is tested for memory safety.** The suite runs clean under
+AddressSanitizer: no leaks and no invalid accesses attributable to the
+binding.
 
 ## Examples
 
