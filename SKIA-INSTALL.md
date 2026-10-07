@@ -30,8 +30,10 @@ In priority order, first match wins:
 
 1. `-d:skiaHome=/path/to/skia` on the compiler command line
 2. the `SKIA_DIR` environment variable
-3. a user-global install: `$XDG_DATA_HOME/skia`, else `~/.local/share/skia`
-4. `/usr/local/skia`, `/opt/skia`, `/usr/local`, `/usr`
+3. a `lib` directory under the working directory nim is invoked from
+   (e.g. a repo-local `./lib` install)
+4. a user-global install: `$XDG_DATA_HOME/skia`, else `~/.local/share/skia`
+5. `/usr/local/skia`, `/opt/skia`, `/usr/local`, `/usr`
 
 If nothing matches, the build stops with a message listing every path it
 tried and the files it was looking for. It does not fall back to a partial

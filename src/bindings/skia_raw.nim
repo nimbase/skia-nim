@@ -20,23 +20,30 @@ const
   ## Where a system-wide Skia may live, in priority order:
   ##   1. `-d:skiaHome=/path/to/skia`
   ##   2. the `SKIA_DIR` environment variable
-  ##   3. a user-global install, `$XDG_DATA_HOME/skia` or `~/.local/share/skia`
-  ##   4. conventional prefixes: `/usr/local/skia`, `/opt/skia`,
+  ##   3. a `lib` directory under the working directory nim is invoked
+  ##      from (e.g. a repo-local `./lib` install)
+  ##   4. a user-global install, `$XDG_DATA_HOME/skia` or `~/.local/share/skia`
+  ##   5. conventional prefixes: `/usr/local/skia`, `/opt/skia`,
   ##      `/usr/local`, `/usr`
+  skiaHome* {.strdefine.} = ""
+    ## Override for the Skia installation root, set with
+    ## `-d:skiaHome=/path/to/skia`. Empty (the default) means "not
+    ## provided": the default candidates below are searched instead.
   skiaCandidates =
-    when defined(skiaHome):
-      @[skiaHome.string]
-    else:
-      block:
-        var found: seq[string] = @[]
+    block:
+      var found: seq[string] = @[]
+      if skiaHome.len > 0:
+        found.add skiaHome
+      else:
         let env = getEnv("SKIA_DIR", "")
         if env.len > 0:
           found.add env
+        found.add "lib"
         let dataHome = getEnv("XDG_DATA_HOME", "")
         found.add(if dataHome.len > 0: dataHome / "skia"
                   else: getHomeDir() / ".local" / "share" / "skia")
         found.add @["/usr/local/skia", "/opt/skia", "/usr/local", "/usr"]
-        found
+      found
 
 const
   skiaRequiredFiles = "include/core/SkCanvas.h, modules/skcms/skcms.h, lib/libskia.a"
@@ -71,7 +78,7 @@ const
   ## wrong-but-plausible path is worse than a hard stop. An empty string
   ## means nothing was found; the `static` assertion below turns that into
   ## a compile error with instructions.
-  skiaHome* =
+  skiaInstallDir* =
     block:
       var found = ""
       for dir in skiaCandidates:
@@ -83,13 +90,13 @@ const
       found
 
 static:
-  doAssert skiaHome.len > 0, skiaNotFoundMsg
+  doAssert skiaInstallDir.len > 0, skiaNotFoundMsg
 
 const
-  skiaIncludeDir = skiaHome / "include"
-  skiaRootIncludeDir = skiaHome
-  skiaModulesDir = skiaHome / "modules"
-  skiaLibDir = skiaHome / "lib"
+  skiaIncludeDir = skiaInstallDir / "include"
+  skiaRootIncludeDir = skiaInstallDir
+  skiaModulesDir = skiaInstallDir / "modules"
+  skiaLibDir = skiaInstallDir / "lib"
 
 {.passC: "-I" & quoteShell(capiDir) & " -I" & quoteShell(skiaIncludeDir) &
     " -I" & quoteShell(skiaRootIncludeDir) & " -I" & quoteShell(skiaModulesDir) &

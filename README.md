@@ -45,9 +45,10 @@ binary, and it links against a system-wide Skia, found via `SKIA_DIR` or
 - A system-wide Skia installation, with matching public headers and a static
   `libskia.a`. This is the one real prerequisite — see
   [SKIA-INSTALL.md](SKIA-INSTALL.md) for how to get one. The binding
-  searches, in order: `-d:skiaHome=…`, `$SKIA_DIR`,
-  `$XDG_DATA_HOME/skia` (or `~/.local/share/skia`), then `/usr/local/skia`,
-  `/opt/skia`, `/usr/local` and `/usr`. If it finds none it stops with the
+  searches, in order: `-d:skiaHome=…`, `$SKIA_DIR`, a `lib` directory
+  under the working directory, `$XDG_DATA_HOME/skia` (or
+  `~/.local/share/skia`), then `/usr/local/skia`, `/opt/skia`, `/usr/local`
+  and `/usr`. If it finds none it stops with the
   list of paths it tried rather than guessing.
 - Linux x86-64 is the configuration this package is developed and tested
   against. The `passC` / `passL` blocks carry macOS and Windows variants,

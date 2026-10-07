@@ -245,9 +245,8 @@ suite "image codec":
     let s = newRgbaSurface(4, 4)
     s.canvas.drawColor(rgb(1, 0, 0))
     let decoded = decodeImage(s.snapshot().encodePng())
-    # PNG decodes to whatever Skia considers native, which is BGRA here, so
-    # use toRgba to normalise before inspecting.
-    check decoded.colorType() != ColorTypeRGBA8888
+    # PNG decodes to whatever Skia considers native (kN32: RGBA everywhere
+    # except BGRA on Windows), so use toRgba to normalise before inspecting.
     let px = decoded.toRgba()
     check pixelAt(px, 4, 4, 2, 2) == 0xFFFF0000'u32
 
