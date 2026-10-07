@@ -56,7 +56,9 @@
 #include "include/effects/SkDashPathEffect.h"
 #include "include/effects/SkDiscretePathEffect.h"
 
-#if defined(__linux__) || defined(__unix__) || defined(__APPLE__)
+#if defined(__APPLE__)
+#    include "include/ports/SkFontMgr_mac_ct.h"
+#elif defined(__linux__) || defined(__unix__)
 #    include "include/ports/SkFontMgr_fontconfig.h"
 #    include "include/ports/SkFontScanner_FreeType.h"
 #endif
@@ -1683,7 +1685,9 @@ skc_color_filter_t *skc_color_filter_new_table(const uint8_t tableA[256]) {
 
 skc_font_manager_t *skc_font_manager_new(void) {
     clearError();
-#if defined(__linux__) || defined(__unix__) || defined(__APPLE__)
+#if defined(__APPLE__)
+    sk_sp<SkFontMgr> mgr = SkFontMgr_New_CoreText(nullptr);
+#elif defined(__linux__) || defined(__unix__)
     sk_sp<SkFontMgr> mgr = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
 #elif defined(_WIN32)
     sk_sp<SkFontMgr> mgr = SkFontMgr_New_DirectWrite();

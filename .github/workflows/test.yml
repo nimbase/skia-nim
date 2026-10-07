@@ -36,12 +36,14 @@ jobs:
         tar xzOf "$WORK/skia.tar.gz" skia-binaries/LICENSE_SKIA > "$PREFIX/LICENSE"
         curl -fsSL "https://codeload.github.com/rust-skia/skia/tar.gz/${SKIA_COMMIT}" -o "$WORK/skia-src.tar.gz"
         mkdir -p "$WORK/src"
-        SRC_TOP="$(tar tzf "$WORK/skia-src.tar.gz" | head -n 1 | cut -d/ -f1)"
-        tar xzf "$WORK/skia-src.tar.gz" -C "$WORK/src" "${SRC_TOP}/include" "${SRC_TOP}/modules/skcms"
+        # Top-level dir of the codeload tarball is skia-$SKIA_COMMIT, as in
+        # SKIA-INSTALL.md. Named explicitly (not discovered via tar|head,
+        # which breaks under pipefail once head closes the pipe).
+        tar xzf "$WORK/skia-src.tar.gz" -C "$WORK/src" "skia-${SKIA_COMMIT}/include" "skia-${SKIA_COMMIT}/modules/skcms"
         rm -rf "$PREFIX/include" "$PREFIX/modules/skcms"
-        cp -R "$WORK/src/${SRC_TOP}/include" "$PREFIX/"
+        cp -R "$WORK/src/skia-${SKIA_COMMIT}/include" "$PREFIX/"
         mkdir -p "$PREFIX/modules"
-        cp -R "$WORK/src/${SRC_TOP}/modules/skcms" "$PREFIX/modules/"
+        cp -R "$WORK/src/skia-${SKIA_COMMIT}/modules/skcms" "$PREFIX/modules/"
         test -f "$PREFIX/include/core/SkCanvas.h"
         test -f "$PREFIX/modules/skcms/skcms.h"
         test -f "$PREFIX/lib/libskia.a"
