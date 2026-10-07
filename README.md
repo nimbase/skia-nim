@@ -61,9 +61,8 @@ text), plus the usual `pthread` / `dl` / `m`.
 **Skia has no C API.** It is a C++ library, and the experimental C interface
 it once had was removed upstream in 2023. So this package writes its own:
 `src/bindings/capi/skia_capi.cpp` is an `extern "C"` shim over the C++ API.
-Nim cannot call C++ directly, so the shim is compiled straight into your
-binary via `{.compile(...)}`. It is small enough that this costs about a
-second.
+The shim is compiled straight into your binary via `{.compile(...)}`.
+It is small enough that this costs about a second.
 
 **Nothing is guessed at.** Every `skc_*` enum constant is `static_assert`ed
 against the Skia enum it mirrors, so an upstream renumber fails the build
