@@ -1,7 +1,47 @@
-# name: test
-# on: [push, pull_request]
-# jobs:
-#   test:
-#     uses: nimbase/setup-nim-action/.github/workflows/test.yml@main
-#     with:
-#       nim-version: stable
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    uses: nimbase/setup-nim-action/.github/workflows/test_clue.yml@main
+    with:
+      nim-version: stable
+      # Linux and macOS only for now; the Skia install below covers just these two.
+      os: '[{"os":"ubuntu-latest"},{"os":"macos-15"}]'
+      pre-install-command: |
+        set -euo pipefail
+        # System-wide Skia install, mirroring SKIA-INSTALL.md (same tag, same
+        # raster-only jpegd-jpege-pdf build, same headers commit). Installed to
+        # the default user location, which the binding finds via its search
+        # order without any SKIA_DIR wiring.
+        SKIA_TAG=0.153.3
+        SKIA_HASH=b7f043e0b1e2a850e702
+        SKIA_COMMIT=61e7ca4e99062cdd0ab69445d5963fb3365778f6
+        case "$(uname -s)-$(uname -m)" in
+          Linux-x86_64) SKIA_TRIPLE="x86_64-unknown-linux-gnu" ;;
+          Darwin-arm64) SKIA_TRIPLE="aarch64-apple-darwin" ;;
+          Darwin-x86_64) SKIA_TRIPLE="x86_64-apple-darwin" ;;
+          *) echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
+        esac
+        SKIA_KEY="${SKIA_HASH}-${SKIA_TRIPLE}-jpegd-jpege-pdf"
+        if [ "$(uname -s)" = "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev libfreetype-dev
+        fi
+        PREFIX="${XDG_DATA_HOME:-$HOME/.local/share}/skia"
+        mkdir -p "$PREFIX/lib"
+        WORK="$(mktemp -d)"
+        trap 'rm -rf "$WORK"' EXIT
+        curl -fsSL "https://github.com/rust-skia/skia-binaries/releases/download/${SKIA_TAG}/skia-binaries-${SKIA_KEY}.tar.gz" -o "$WORK/skia.tar.gz"
+        tar xzOf "$WORK/skia.tar.gz" skia-binaries/libskia.a > "$PREFIX/lib/libskia.a"
+        tar xzOf "$WORK/skia.tar.gz" skia-binaries/LICENSE_SKIA > "$PREFIX/LICENSE"
+        curl -fsSL "https://codeload.github.com/rust-skia/skia/tar.gz/${SKIA_COMMIT}" -o "$WORK/skia-src.tar.gz"
+        mkdir -p "$WORK/src"
+        SRC_TOP="$(tar tzf "$WORK/skia-src.tar.gz" | head -n 1 | cut -d/ -f1)"
+        tar xzf "$WORK/skia-src.tar.gz" -C "$WORK/src" "${SRC_TOP}/include" "${SRC_TOP}/modules/skcms"
+        rm -rf "$PREFIX/include" "$PREFIX/modules/skcms"
+        cp -R "$WORK/src/${SRC_TOP}/include" "$PREFIX/"
+        mkdir -p "$PREFIX/modules"
+        cp -R "$WORK/src/${SRC_TOP}/modules/skcms" "$PREFIX/modules/"
+        test -f "$PREFIX/include/core/SkCanvas.h"
+        test -f "$PREFIX/modules/skcms/skcms.h"
+        test -f "$PREFIX/lib/libskia.a"
